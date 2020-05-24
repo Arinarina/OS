@@ -1,0 +1,113 @@
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define N 5
+#define M N*N*N
+int CNT = 0;
+
+typedef struct{
+	int id;
+	int x; 
+	int y;
+	int z;
+	int rez;
+} pthrData;
+ 
+void* Function(void *dataID){
+	if(CNT == N){
+		printf("\n");
+		CNT = 0;
+	}
+	//получаем структуру с данными
+	pthrData *data = (pthrData*) dataID;
+ 
+	//считаем функцию
+	data->rez = (data->x + data->y) * data->z;
+	printf("Thread Number %d: rez = (%d + %d) * %d = %d\n", data->id, data->x, data->y, data->z, data->rez);
+ 	printf("Thread Number %d gives priority for other threads\n", data->id, data->x, data->y, data->z, data->rez);
+ 	CNT++;
+ 	sched_yield();
+}
+
+void input(int *a, int *b, int *c){
+	for(int i = 0;i < N;i++){
+		a[i] = rand () % 10;
+		b[i] = rand () % 10;
+		c[i] = rand () % 10;
+	}
+
+	printf("x: ");
+	for(int i = 0; i < N; i++){
+		if(i != N-1)
+			printf("%d, ", a[i]);
+		else
+			printf("%d\n", a[i]);
+	}
+	
+	printf("y: ");
+	for(int i = 0; i < N; i++){
+		if(i != N-1)
+			printf("%d, ", b[i]);
+		else
+			printf("%d\n", b[i]);
+	}
+
+	printf("z: ");
+	for(int i = 0; i < N; i++){
+		if(i != N-1)
+			printf("%d, ", c[i]);
+		else
+			printf("%d\n", c[i]);
+	}
+	printf("------\nFunction: rez = (x + y) * z\n------\n");
+}
+
+int main(){
+	srand(time(NULL));
+	int count = 0;
+
+	//выделяем память под массив
+	int* a = (int*) malloc(N * sizeof(int));
+	int* b = (int*) malloc(N * sizeof(int));
+	int* c = (int*) malloc(N * sizeof(int));
+	
+	input(a, b, c);	
+	
+	//выделяем память под массив идентификаторов потоков
+	pthread_t* ID = (pthread_t*) malloc(N * sizeof(pthread_t));
+	//сколько потоков - столько и структур с потоковыми данными
+	pthrData* DataID = (pthrData*) malloc(N * sizeof(pthrData));
+	
+	//инициализируем структуры потоков
+	for(int i = 0; i < N; i++){
+		for(int j = 0; j < N; j++){
+			for(int k = 0; k < N; k++){
+				if(count == N)
+					count -= N;
+				DataID[count].id = count;
+				DataID[count].x = a[i];
+				DataID[count].y = b[j];
+				DataID[count].z = c[k];
+
+				//запускаем поток
+				pthread_create(&(ID[count]), NULL, Function, &DataID[count]);
+				count++;
+			}
+		}
+	}
+ 
+	//ожидаем выполнение всех потоков
+	for(int i = 0; i < N; i++)
+		pthread_join(ID[i], NULL);
+ 	
+ 	//освобождаем память
+ 	printf("\n------\nThe End!!!\n");
+	free(ID);
+	free(DataID);
+	free(a);
+	free(b);
+	free(c);
+	return 0;
+}
